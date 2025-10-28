@@ -13,5 +13,5 @@ def read_item(item_id: int, q: Union[str, None] = None):
 
 @app.get("/status")
 def read_status():
-    return {"status":"not ok"}
+    return {"status":"OK"}
 
