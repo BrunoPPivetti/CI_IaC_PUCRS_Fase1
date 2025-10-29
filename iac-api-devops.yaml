@@ -1,0 +1,48 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "IaC-api-devops"
+
+Parameters:
+  KeyName:
+    Description: Nome da chave SSH para acesso à EC2
+    Type: AWS::EC2::KeyPair::KeyName
+
+Resources:
+
+  ApiSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Permitir acesso HTTP a porta 80
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+  ApiEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      ImageId: ami-0e86e20dae9224db8  # Amazon Linux 2 (região us-east-1)
+      KeyName: !Ref KeyName
+      SecurityGroupIds:
+        - !Ref ApiSecurityGroup
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          yum update -y
+          amazon-linux-extras install docker -y
+          systemctl start docker
+          systemctl enable docker
+          usermod -aG docker ec2-user
+      Tags:
+        - Key: Name
+          Value: IaC-api-devops-EC2
+
+Outputs:
+  InstancePublicIP:
+    Description: IP Público da EC2
+    Value: !GetAtt ApiEC2Instance.PublicIp
+
+  InstancePublicDNS:
+    Description: DNS público da EC2
+    Value: !GetAtt ApiEC2Instance.PublicDnsName
