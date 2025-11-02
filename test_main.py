@@ -14,6 +14,6 @@ def test_hello():
     assert response.json() == {'Hello':'World'}
 
 def test_devops():
-    response = client.get('pucrs')
+    response = client.get('/pucrs')
     assert response.status_code == 200
-    assert response.json() == {'fase 1':'pucrs'}
+    assert response.json() == {'fase 1':'devops'}
