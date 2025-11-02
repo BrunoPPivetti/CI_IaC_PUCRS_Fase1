@@ -3,15 +3,14 @@ from typing import Union
 
 app = FastAPI()
 
-@app.get("/")
+@app.get('/')
 def read_root():
-    return {"Hello":"World"}
+    return {'Hello':'World'}
 
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: Union[str, None] = None):
-    return {"item_id": item_id, "q": q}
-
-@app.get("/status")
+@app.get('/status')
 def read_status():
-    return {"status":"OK"}
+    return {'status':'OK'}
 
+@app.get('/pucrs')
+def read_projeto():
+    return {'fase 1':'devops'}
