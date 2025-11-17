@@ -5,7 +5,29 @@ Parameters:
   KeyName:
     Description: Nome da chave SSH para acesso à EC2
     Type: AWS::EC2::KeyPair::KeyName
+  
+  SshAccessIp:
+    Description: Ip Público
+    Type: String
+    Default: 177.131.162.222/32
+  
+  EcrRepoName:
+    Description: projeto-devops
+    Type: String
+    Default: projeto-devops
 
+  AwsAccessKeyId:
+    Description: AWS Access Key id
+    Type: String
+  
+  AwsSecretAccessKey:
+    Description: AWS Secret Access Key
+    Type: String
+
+  AwsAccountId:
+      Description: Id da conta AWS
+      Type: String
+      Default: "598164936307"
 Resources:
 
   ApiSecurityGroup:
@@ -17,27 +39,58 @@ Resources:
           FromPort: 80
           ToPort: 80
           CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref SshAccessIp
+      Tags:
+        - Key: Name
+          Value: SecurityGroup-devops
 
   ApiEC2Instance:
     Type: AWS::EC2::Instance
     Properties:
       InstanceType: t2.micro
-      ImageId: ami-0e86e20dae9224db8  # Amazon Linux 2 (região us-east-1)
+      ImageId: ami-0e86e20dae9224db8  
       KeyName: !Ref KeyName
       SecurityGroupIds:
         - !Ref ApiSecurityGroup
+      Tags:
+        - Key: Name
+          Value: EC2-devops
+
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
           yum update -y
           amazon-linux-extras install docker -y
+          yum install -y aws-cli
           systemctl start docker
           systemctl enable docker
           usermod -aG docker ec2-user
+
+          export AWS_ACCESS_KEY_ID="${AwsAccessKeyId}"
+          export AWS_SECRET_ACCESS_KEY="${AwsSecretAccessKey}"
+
+          ACCOUNT_ID="${AwsAccountId}"
+          REGION="${AWS::Region}"
+          REPOSITORY_URL="${AwsAccountId}.dkr.ecr.$REGION.amazonaws.com/${EcrRepoName}"
+
+          TOKEN=$(aws ecr get-login-password --region $REGION)
+          echo $TOKEN | docker login --username AWS --password-stdin ${AwsAccountId}.dkr.ecr.$REGION.amazonaws.com
+          docker pull $REPOSITORY_URL:latest
+          docker run -d -p 80:8000 --restart=always --name projeto-devops $REPOSITORY_URL:latest
+
+  ApiEcrRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: projeto-devops
+      ImageScanningConfiguration:
+        ScanOnPush: true
       Tags:
         - Key: Name
-          Value: IaC-api-devops-EC2
-
+          Value: ECR-devops
+     
 Outputs:
   InstancePublicIP:
     Description: IP Público da EC2
