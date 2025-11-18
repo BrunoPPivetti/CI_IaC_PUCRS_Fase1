@@ -24,6 +24,10 @@ Parameters:
     Description: AWS Secret Access Key
     Type: String
 
+  AwsSessionToken:
+    Description: Aws Session Token
+    Type: String
+
   AwsAccountId:
       Description: Id da conta AWS
       Type: String
@@ -71,6 +75,7 @@ Resources:
 
           export AWS_ACCESS_KEY_ID="${AwsAccessKeyId}"
           export AWS_SECRET_ACCESS_KEY="${AwsSecretAccessKey}"
+          export AWS_SESSION_TOKEN="{AwsSessionToken}"
 
           ACCOUNT_ID="${AwsAccountId}"
           REGION="${AWS::Region}"
