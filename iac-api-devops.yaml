@@ -3,41 +3,35 @@ Description: "IaC-api-devops"
 
 Parameters:
   KeyName:
-    Description: Nome da chave SSH para acesso à EC2
     Type: AWS::EC2::KeyPair::KeyName
-  
+
   SshAccessIp:
-    Description: Ip Público
     Type: String
-    Default: 177.131.162.222/32
-  
+    Default: 0.0.0.0/0
+
   EcrRepoName:
-    Description: projeto-devops
     Type: String
     Default: projeto-devops
 
   AwsAccessKeyId:
-    Description: AWS Access Key id
     Type: String
-  
+
   AwsSecretAccessKey:
-    Description: AWS Secret Access Key
     Type: String
 
   AwsSessionToken:
-    Description: Aws Session Token
     Type: String
 
   AwsAccountId:
-      Description: Id da conta AWS
-      Type: String
-      Default: "598164936307"
+    Type: String
+    Default: "598164936307"
+
 Resources:
 
   ApiSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Permitir acesso HTTP a porta 80
+      GroupDescription: SG API devops
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
@@ -47,18 +41,35 @@ Resources:
           FromPort: 22
           ToPort: 22
           CidrIp: !Ref SshAccessIp
-      Tags:
-        - Key: Name
-          Value: SecurityGroup-devops
+
+  ApiEcrRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Ref EcrRepoName
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      RepositoryPolicyText:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:role/LabRole
+            Action:
+              - ecr:GetAuthorizationToken
+              - ecr:BatchCheckLayerAvailability
+              - ecr:PutImage
+              - ecr:InitiateLayerUpload
+              - ecr:UploadLayerPart
+              - ecr:CompleteLayerUpload
+              - ecr:DescribeRepositories
 
   ApiEC2Instance:
     Type: AWS::EC2::Instance
     Properties:
       InstanceType: t2.micro
-      ImageId: ami-0e86e20dae9224db8  
+      ImageId: ami-0e86e20dae9224db8   
       KeyName: !Ref KeyName
-      SecurityGroupIds:
-        - !Ref ApiSecurityGroup
+      SecurityGroupIds: [ !Ref ApiSecurityGroup ]
       Tags:
         - Key: Name
           Value: EC2-devops
@@ -67,7 +78,7 @@ Resources:
         Fn::Base64: !Sub |
           #!/bin/bash
           yum update -y
-          amazon-linux-extras install docker -y
+          yum install docker -y
           yum install -y aws-cli
           systemctl start docker
           systemctl enable docker
@@ -75,50 +86,26 @@ Resources:
 
           export AWS_ACCESS_KEY_ID="${AwsAccessKeyId}"
           export AWS_SECRET_ACCESS_KEY="${AwsSecretAccessKey}"
-          export AWS_SESSION_TOKEN="{AwsSessionToken}"
+          export AWS_SESSION_TOKEN="${AwsSessionToken}"
 
-          ACCOUNT_ID="${AwsAccountId}"
           REGION="${AWS::Region}"
-          REPOSITORY_URL="${AwsAccountId}.dkr.ecr.$REGION.amazonaws.com/${EcrRepoName}"
+          REPO_URL="${AwsAccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${EcrRepoName}"
 
-          TOKEN=$(aws ecr get-login-password --region $REGION)
-          echo $TOKEN | docker login --username AWS --password-stdin ${AwsAccountId}.dkr.ecr.$REGION.amazonaws.com
-          docker pull $REPOSITORY_URL:latest
-          docker run -d -p 80:8000 --restart=always --name projeto-devops $REPOSITORY_URL:latest
+          aws ecr get-login-password --region $REGION \
+            | docker login --username AWS --password-stdin ${AwsAccountId}.dkr.ecr.$REGION.amazonaws.com
 
-  ApiEcrRepository:
-    Type: AWS::ECR::Repository
-    Properties:
-      RepositoryName: projeto-devops
+          docker pull $REPO_URL:latest
 
-      RepositoryPolicyText:
-        Version: "2012-10-17"
-        Statement:
-          - Sid: AllowPushFromLabRole
-            Effect: Allow
-            Principal:
-              AWS: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/LabRole"
-            Action:
-              - ecr:GetAuthorizationToken
-              - ecr:BatchCheckLayerAvailabilty
-              - ecr:PutImage
-              - ecr:InitiateLayerUpload
-              - ecr:UploadLayerPart
-              - ecr:CompleteLayerUpload
-              - ecr:DescribeRepositories
-            Resource: "*"
-            
-      ImageScanningConfiguration:
-        ScanOnPush: true
-      Tags:
-        - Key: Name
-          Value: ECR-devops
-     
+          docker rm -f projeto-devops || true
+          docker run -d \
+            --name projeto-devops \
+            -p 80:8000 \
+            --restart always \
+            $REPO_URL:latest
+
 Outputs:
   InstancePublicIP:
-    Description: IP Público da EC2
     Value: !GetAtt ApiEC2Instance.PublicIp
 
   InstancePublicDNS:
-    Description: DNS público da EC2
     Value: !GetAtt ApiEC2Instance.PublicDnsName
