@@ -5,16 +5,28 @@ env:
 
 on:
   push:
-    branches: [ "main" ]
+    branches: 
+      - main
+  pull_request:
 
 jobs:
   test-build-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
 
     steps:
       - name: Checkout código
-        uses: actions/checkout@v3
-
+        uses: actions/checkout@v4
+      
+      - name: Credenciais AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID}}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY}}
+          aws-region: ${{ secrets.AWS_REGION}}
+      
       - name: Configurar Python
         uses: actions/setup-python@v4
         with:
@@ -28,14 +40,6 @@ jobs:
       - name: Testes
         run: pytest -q
 
-      - name: Configurar credenciais AWS
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
-          aws-region: us-east-1
-
       - name: Login no ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -43,6 +47,6 @@ jobs:
       - name: Build e push para ECR
         uses: docker/build-push-action@v5
         with:
+          context: .
           push: true
-          tags: |
-            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+          tags: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}

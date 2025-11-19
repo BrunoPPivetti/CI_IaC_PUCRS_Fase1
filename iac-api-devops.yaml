@@ -15,23 +15,22 @@ Parameters:
 
   AwsAccessKeyId:
     Type: String
+    Description: Access Key ID 
 
   AwsSecretAccessKey:
     Type: String
-
-  AwsSessionToken:
-    Type: String
+    Description: Secret Access Key
 
   AwsAccountId:
     Type: String
-    Default: "598164936307"
+    Description: ID da conta AWS
 
 Resources:
 
   ApiSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: SG API devops
+      GroupDescription: SG API devops - acesso a porta 80 e 22
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
@@ -48,26 +47,12 @@ Resources:
       RepositoryName: !Ref EcrRepoName
       ImageScanningConfiguration:
         ScanOnPush: true
-      RepositoryPolicyText:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              AWS: !Sub arn:aws:iam::${AWS::AccountId}:role/LabRole
-            Action:
-              - ecr:GetAuthorizationToken
-              - ecr:BatchCheckLayerAvailability
-              - ecr:PutImage
-              - ecr:InitiateLayerUpload
-              - ecr:UploadLayerPart
-              - ecr:CompleteLayerUpload
-              - ecr:DescribeRepositories
-
+      
   ApiEC2Instance:
     Type: AWS::EC2::Instance
     Properties:
       InstanceType: t2.micro
-      ImageId: ami-0e86e20dae9224db8   
+      ImageId: ami-025ca978d4c1d9825   
       KeyName: !Ref KeyName
       SecurityGroupIds: [ !Ref ApiSecurityGroup ]
       Tags:
@@ -82,13 +67,12 @@ Resources:
           yum install -y aws-cli
           systemctl start docker
           systemctl enable docker
-          usermod -aG docker ec2-user
-
+          
           export AWS_ACCESS_KEY_ID="${AwsAccessKeyId}"
           export AWS_SECRET_ACCESS_KEY="${AwsSecretAccessKey}"
-          export AWS_SESSION_KEY="${AwsSessionKey}"
-
+          
           REGION="${AWS::Region}"
+          
           REPO_URL="${AwsAccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${EcrRepoName}"
 
           aws ecr get-login-password --region $REGION \
@@ -105,7 +89,9 @@ Resources:
 
 Outputs:
   InstancePublicIP:
+    Description: IP público da instância EC2
     Value: !GetAtt ApiEC2Instance.PublicIp
 
   InstancePublicDNS:
+    Description: DNS público da instância EC2
     Value: !GetAtt ApiEC2Instance.PublicDnsName
