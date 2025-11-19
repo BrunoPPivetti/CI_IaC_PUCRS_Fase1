@@ -7,7 +7,7 @@ Parameters:
 
   SshAccessIp:
     Type: String
-    Default: 0.0.0.0/0
+    Default: 177.131.162.222/32
 
   EcrRepoName:
     Type: String
@@ -51,7 +51,7 @@ Resources:
   ApiEC2Instance:
     Type: AWS::EC2::Instance
     Properties:
-      InstanceType: t2.micro
+      InstanceType: t3.micro
       ImageId: ami-025ca978d4c1d9825   
       KeyName: !Ref KeyName
       SecurityGroupIds: [ !Ref ApiSecurityGroup ]
