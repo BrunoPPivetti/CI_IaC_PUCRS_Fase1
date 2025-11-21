@@ -96,3 +96,4 @@ Outputs:
     Description: DNS público da instância EC2
     Value: !GetAtt ApiEC2Instance.PublicDnsName
 
+ 
