@@ -51,7 +51,7 @@ Resources:
   ApiEC2Instance:
     Type: AWS::EC2::Instance
     Properties:
-      SubnetId: subnet-0263c83e0dffd9fa9
+      SubnetId: subnet-06712f9610581c1a7
       InstanceType: t3.micro
       ImageId: ami-025ca978d4c1d9825   
       KeyName: !Ref KeyName
